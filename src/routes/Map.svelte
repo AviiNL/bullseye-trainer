@@ -153,9 +153,7 @@
             new Feature(circle(bullseye, nm_to_m(120))),
             new Feature(circle(bullseye, nm_to_m(150))),
             new Feature(circle(bullseye, nm_to_m(180))),
-
-            // new Feature(line(bullseye, nm_to_m(180), 90)),
-            // center    length        angle
+            //               center    length        angle
             new Feature(line(bullseye, nm_to_m(180), 0)),
             new Feature(line(bullseye, nm_to_m(180), 30 - 0.785)),
             new Feature(line(bullseye, nm_to_m(180), 60 - 1.34)),
@@ -168,9 +166,6 @@
             new Feature(line(bullseye, nm_to_m(180), 270 + 1.52)),
             new Feature(line(bullseye, nm_to_m(180), 300 + 1.34)),
             new Feature(line(bullseye, nm_to_m(180), 330 + 0.785)),
-
-            // new Feature(line(bullseye, nm_to_m(300), 120)),
-            // new Feature(line(bullseye, nm_to_m(300), 150))
         ]);
 
         // vectorLayer.getSource()?.addFeature(new Feature(new LineString([bullseye, playerpos])));
