@@ -121,7 +121,7 @@
             center = transform(center, 'EPSG:3857', 'EPSG:4326');
 
             // let start = offset(center, -(length / 2), toRadians(angle));
-            let end = offset(center, length / 2, toRadians(angle));
+            let end = offset(center, length, toRadians(angle));
 
             let c = transform(center, 'EPSG:4326', 'EPSG:3857');
             let a = transform(end, 'EPSG:4326', 'EPSG:3857');
@@ -153,33 +153,20 @@
             new Feature(circle(bullseye, nm_to_m(120))),
             new Feature(circle(bullseye, nm_to_m(150))),
             new Feature(circle(bullseye, nm_to_m(180))),
-            // new Feature(line(bullseye, nm_to_m(300), 0)),
-            // new Feature(line(bullseye, nm_to_m(300), 30)),
-            // new Feature(line(bullseye, nm_to_m(300), 60)),
+
             new Feature(line(bullseye, nm_to_m(30), 90)),
             new Feature(line(bullseye, nm_to_m(60), 90)),
             new Feature(line(bullseye, nm_to_m(90), 90)),
             new Feature(line(bullseye, nm_to_m(120), 90)),
             new Feature(line(bullseye, nm_to_m(150), 90)),
             new Feature(line(bullseye, nm_to_m(180), 90)),
-            new Feature(line(bullseye, nm_to_m(210), 90)),
-            new Feature(line(bullseye, nm_to_m(240), 90)),
-            new Feature(line(bullseye, nm_to_m(270), 90)),
-            new Feature(line(bullseye, nm_to_m(300), 90)),
-            new Feature(line(bullseye, nm_to_m(330), 90)),
-            new Feature(line(bullseye, nm_to_m(360), 90)),
 
+            new Feature(line(bullseye, nm_to_m(30), 270)),
             new Feature(line(bullseye, nm_to_m(60), 270)),
             new Feature(line(bullseye, nm_to_m(90), 270)),
             new Feature(line(bullseye, nm_to_m(120), 270)),
             new Feature(line(bullseye, nm_to_m(150), 270)),
             new Feature(line(bullseye, nm_to_m(180), 270)),
-            new Feature(line(bullseye, nm_to_m(210), 270)),
-            new Feature(line(bullseye, nm_to_m(240), 270)),
-            new Feature(line(bullseye, nm_to_m(270), 270)),
-            new Feature(line(bullseye, nm_to_m(300), 270)),
-            new Feature(line(bullseye, nm_to_m(330), 270)),
-            new Feature(line(bullseye, nm_to_m(360), 270)),
 
             // new Feature(line(bullseye, nm_to_m(300), 120)),
             // new Feature(line(bullseye, nm_to_m(300), 150))
