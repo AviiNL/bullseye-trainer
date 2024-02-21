@@ -37,12 +37,12 @@
         let last_heading = 0;
 
         const update = () => {
-            let coords = fromLonLat([player.lon, player.lat]);
+            let coords = player.position;
             let angle = get_heading(bullseye, coords);
             let display_angle = angle % 360;
             angle = angle - player.heading;
 
-            // This shouldnt be here...
+            // This shouldnt be here, but this is the only place with an update
             if (player.is_player && last_heading != player.heading) {
                 map?.getView().setRotation(toRadians(-player.heading));
                 last_heading = player.heading;
@@ -76,7 +76,7 @@
             ctx.fillText(
                 ('00' + display_angle.toFixed(0).toString()).slice(-3),
                 offset,
-                offset + radius * 2
+                offset + radius * 2,
             );
 
             ctx.moveTo(offset + x1, offset + y1);
@@ -92,8 +92,8 @@
 
         map?.addControl(
             new Control({
-                element: root
-            })
+                element: root,
+            }),
         );
     });
 </script>

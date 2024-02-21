@@ -7,6 +7,12 @@
     import OSM from 'ol/source/OSM';
     import Feature from 'ol/Feature';
     import { Circle, LineString, Point } from 'ol/geom';
+    import {
+        Modify,
+        MouseWheelZoom,
+        PinchZoom,
+        defaults as defaultInteractions,
+    } from 'ol/interaction';
     import VectorSource from 'ol/source/Vector';
     import VectorLayer from 'ol/layer/Vector';
     import { transform, fromLonLat } from 'ol/proj';
@@ -15,13 +21,17 @@
     import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
     import { toRadians } from 'ol/math';
     import type { Coordinate } from 'ol/coordinate';
-    import { DistanceUnits, Ruler } from './Ruler';
+    import { DistanceUnits, Ruler, get_distance } from './Ruler';
     import Compass from './Compass.svelte';
     import UnitRender from './Entities/UnitRender';
     import Unit from './Entities/Unit';
     import { onMount } from 'svelte';
     import { preload } from './icon';
     import { extend } from 'ol/array';
+    import { doubleClick } from 'ol/events/condition';
+    import MyPinchZoom from './MyPinchZoom';
+
+    export let targets: Unit[] = [];
 
     let lon = 16.854444444444443;
     let lat = 45.4025654863123;
@@ -37,13 +47,8 @@
     // let random_lon = lon;
 
     let player = new Unit({
-        UnitName: 'Player',
-        LatLongAlt: {
-            Lat: random_lat,
-            Long: random_lon,
-            Alt: 15000,
-        },
-        Heading: 210,
+        Position: playerpos,
+        Heading: 0,
         Name: 'F-16C_50',
         Flags: {
             Invisible: false,
@@ -65,14 +70,6 @@
         await preload();
 
         setupMap(node);
-
-        let heading = 0;
-        setInterval(() => {
-            heading = (heading + 0.5) % 360;
-            player.update({
-                Heading: heading,
-            });
-        }, 30 / 1000);
     });
 
     // functions
@@ -89,7 +86,7 @@
         };
 
         let stroke = new Stroke({
-            color: 'rgba(0,0,0,0.5)',
+            color: 'rgba(0,128,0,0.4)',
             width: 2,
         });
         let fill = new Fill({
@@ -173,17 +170,69 @@
         map = new Map({
             target: node.id,
             layers: [osmLayer, vectorLayer],
-
             view: new View({
                 center: center,
                 zoom: 8,
-                rotation: 0,
+                // rotation: 0,
+                // extent: [
+                //     // [minx, miny, maxx, maxy
+                //     lon - 2,
+                //     lat - 2,
+                //     lon + 2,
+                //     lat + 2,
+                // ],
             }),
+            interactions: defaultInteractions({
+                dragPan: false,
+                shiftDragZoom: false,
+                altShiftDragRotate: false,
+                pinchRotate: false,
+                pinchZoom: false,
+                doubleClickZoom: false,
+                mouseWheelZoom: true,
+                onFocusOnly: false,
+            }).extend([
+                new MouseWheelZoom({
+                    useAnchor: false,
+                }),
+                new MyPinchZoom({
+                    anchor: center,
+                }),
+            ]),
         });
+        var extent = vectorLayer.getSource()?.getExtent();
+        map.getView().fit(extent!, { size: map.getSize() });
+
+        // map.on('moveend', (m) => {
+        //     m.map.getView().setCenter(center);
+        // });
+
+        // map.getTargetElement().addEventListener('dblclick', (e) => {
+        //     var coords = map!.getEventCoordinate(e);
+
+        //     let closest = null;
+        //     let distance = Number.MAX_SAFE_INTEGER;
+        //     for (let target of targets) {
+        //         let calculated = get_distance(coords, target.position, DistanceUnits.Meters);
+        //         if (calculated < distance) {
+        //             distance = calculated;
+        //             closest = target;
+        //         }
+        //     }
+
+        //     let distance_in_nm = distance / 1852;
+        // });
 
         let ruler = new Ruler(bullseye);
         ruler.set_units(DistanceUnits.NauticalMiles);
+        ruler.set_mouse_button(0);
         ruler.addTo(map);
+
+        let player_ruler = new Ruler(player);
+        player_ruler.set_mouse_button(0);
+        player_ruler.set_units(DistanceUnits.NauticalMiles);
+        player_ruler.addTo(map);
+        player_ruler.set_color('#7fdfff');
 
         units.add(player);
 

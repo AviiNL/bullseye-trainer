@@ -1,12 +1,14 @@
-import type { Point } from "ol/geom";
+import { Geometry, Point } from "ol/geom";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import type { Feature, Map as olMap } from "ol";
+import { Collection, Feature, Map as olMap } from "ol";
 import { Fill, Icon, Stroke, Style, Text } from "ol/style";
-import type Unit from "./Unit";
+import Unit from "./Unit";
 import { icon as get_icon } from "../icon";
 import type { StyleLike } from "ol/style/Style";
 import { toRadians } from "ol/math";
+import { Modify, Select } from "ol/interaction";
+import type { FeatureLike } from "ol/Feature";
 
 const icon = (feature: Feature, color: string | { r: number; g: number; b: number; } | null) => {
   const unit = feature.get("self");
@@ -101,6 +103,34 @@ export default class extends Map<string, Unit> {
   }
 
   public addTo(map: olMap) {
+
+    let collection = new Collection<Feature<Geometry>>();
+    let selected: any = null;
+    map.on("moveend", () => {
+      collection.clear();
+      selected = null;
+    });
+
+    map.on('pointermove', (e) => {
+      map.forEachFeatureAtPixel(e.pixel, (f: FeatureLike) => {
+        if (collection.getLength() == 0) {
+          collection.push(f as Feature<Geometry>);
+          selected = f;
+        }
+        return true;
+      }, {
+        layerFilter: (layer) => {
+          return layer === this.layer;
+        }
+      });
+    });
+
+    var modify = new Modify({
+      features: collection,
+    });
+
+    map.addInteraction(modify);
+
     map.addLayer(this.layer);
   }
 
@@ -122,14 +152,9 @@ export default class extends Map<string, Unit> {
   }
 
   public add(unit: Unit) {
-    // error if unit is already in the map
-    if (this.has(unit.name)) {
-      throw new Error(`Unit ${unit.name} already exists in the map`);
-    }
-
     this.layer.getSource()?.addFeature(unit.feature);
 
-    return super.set(unit.name, unit);
+    // return super.set(unit, unit);
   }
 
   public select(key: string) {

@@ -6,6 +6,7 @@ import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style, Text } from "ol/style";
 import { DEFAULT_RADIUS, getDistance, getLength } from "ol/sphere.js";
 import { disableCoordinateWarning, setUserProjection, toLonLat, transform, useGeographic } from "ol/proj";
+import Unit from "./Entities/Unit";
 
 // enum with Meters, Feet, Nautical Miles
 export enum DistanceUnits {
@@ -19,6 +20,8 @@ export class Ruler extends Feature {
   public readonly layer: VectorLayer<VectorSource<Feature<Geometry>>>;
   private feature: Feature<LineString> | null = null;
 
+  private mouse_button: number;
+  private color: string;
 
   private start: Coordinate | null;
   private end: Coordinate | null;
@@ -26,36 +29,45 @@ export class Ruler extends Feature {
   private units: DistanceUnits;
   private is_drawing: boolean = false;
 
-  private bullseye: Coordinate | null;
+  private origin: Coordinate | null;
 
   public addTo(map: olMap) {
-    let mouseMove = (e: MouseEvent) => {
-      var coords = map.getEventCoordinate(e);
+    let mouseMove = (e: UIEvent | { clientX: number, clientY: number }) => {
+      if (!this.is_drawing) { return; }
+
+      var coords = map.getEventCoordinate(e as MouseEvent);
       this.update_draw(coords);
     }
 
-    // add an event handler for middle mouse button
-    map.getTargetElement().addEventListener("mousedown", (e) => {
-      // the ruler can only be a strait line, it starts drawing with the middle mouse button, and any other mouse click will finish the line
-      if (!this.is_drawing && e.button == 1) {
-        var coords = map.getEventCoordinate(e);
-        this.start_draw(coords);
-        this.is_drawing = true;
-        map.getTargetElement().addEventListener("mousemove", mouseMove);
+    let mousedown = (e: MouseEvent | TouchEvent) => {
+      if (!(e.target instanceof HTMLCanvasElement)) {
         return;
       }
-    });
+      // the ruler can only be a strait line, it starts drawing with the middle mouse button, and any other mouse click will finish the line
+      if (!this.is_drawing && ((e as MouseEvent).button == this.mouse_button || (e as TouchEvent).targetTouches?.length == 1)) {
+        var coords = map.getEventCoordinate(e as MouseEvent);
+        this.start_draw(coords);
+        this.is_drawing = true;
+        return;
+      }
+    };
 
-    map.getTargetElement().addEventListener("mouseup", () => {
+    let mouseup = () => {
       if (this.is_drawing) {
         this.is_drawing = false;
         this.end_draw();
-        map.getTargetElement().removeEventListener(
-          "mousemove",
-          mouseMove
-        );
       }
-    });
+    };
+
+    // add an event handler for middle mouse button
+    map.getTargetElement().addEventListener("mousedown", mousedown);
+    map.getTargetElement().addEventListener("touchstart", mousedown);
+
+    map.getTargetElement().addEventListener("mouseup", mouseup);
+    map.getTargetElement().addEventListener("touchend", mouseup);
+
+    map.getTargetElement().addEventListener("mousemove", mouseMove);
+    map.getTargetElement().addEventListener("touchmove", mouseMove);
 
     map.addLayer(this.layer);
   }
@@ -64,23 +76,48 @@ export class Ruler extends Feature {
     this.layer.setZIndex(zIndex);
   }
 
-  constructor(bullseye?: Coordinate | null) {
+  public set_color(color: string) {
+    this.color = color;
+  }
+
+  constructor(origin?: Coordinate | Unit | null) {
     super();
 
     this.units = DistanceUnits.NauticalMiles;
+    this.mouse_button = 1;
+    this.color = '#ff0000';
 
     this.layer = new VectorLayer({
       source: new VectorSource({
         features: [],
       }),
-      declutter: false,
+      declutter: true,
       zIndex: 1000,
       className: "ruler",
     });
 
-    this.bullseye = bullseye || null;
+    if (origin instanceof Unit) {
+      this.origin = origin.position;
+
+      origin.feature.on("change", () => {
+        this.start = origin.position;
+        this.origin = origin.position;
+      })
+
+    } else {
+      this.origin = origin || null;
+    }
     this.start = null;
     this.end = null;
+  }
+
+  public set_origin(origin: Coordinate) {
+    this.origin = origin;
+    this.start = origin;
+  }
+
+  public set_mouse_button(button: number) {
+    this.mouse_button = button;
   }
 
   public remove() {
@@ -94,14 +131,14 @@ export class Ruler extends Feature {
   public start_draw(start: Coordinate) {
     this.remove();
 
-    this.start = this.bullseye || start;
+    this.start = this.origin || start;
 
     this.feature = new Feature({
       geometry: new LineString([this.start, this.start]),
     });
 
     this.layer.getSource()?.addFeature(this.feature);
-
+    this.update_draw(start);
   }
 
   public set_units(units: DistanceUnits) {
@@ -122,7 +159,7 @@ export class Ruler extends Feature {
     let distance_str = "m";
     switch (this.units) {
       case DistanceUnits.Kilometers:
-        distance_str = distance.toFixed(2) + "km";
+        distance_str = distance.toFixed(0) + "km";
         break;
       case DistanceUnits.Meters:
         distance_str = distance.toFixed(0) + "m";
@@ -131,34 +168,58 @@ export class Ruler extends Feature {
         distance_str = distance.toFixed(0) + "ft";
         break;
       case DistanceUnits.NauticalMiles:
-        distance_str = distance.toFixed(2) + "nm";
+        distance_str = distance.toFixed(0) + "nm";
         break;
     }
 
-    distance_str += " " + get_heading(this.start, this.end).toFixed(2) + "°";
+    distance_str = get_heading(this.start, this.end).toFixed(0) + "° / " + distance_str;
 
-    this.feature?.setStyle(
-      new Style({
-        text: new Text({
-          text: distance_str,
-          scale: 2,
-          placement: "line",
-          textAlign: "end",
-          fill: new Fill({
-            color: "#000",
-          }),
-          stroke: new Stroke({
-            color: "#ffffff",
-            width: 2,
-          }),
-          maxAngle: 0,
+
+    var textStyle = new Style({
+      text: new Text({
+        text: distance_str,
+        scale: 1.7,
+        placement: "point",
+        textAlign: "center",
+        fill: new Fill({
+          color: "#000",
         }),
         stroke: new Stroke({
-          color: "#ff0000",
+          color: "#ffffff",
           width: 2,
         }),
-      }),
-    );
+        maxAngle: 0,
+      })
+    });
+
+
+    let color = this.color;
+    let is_dark = true;
+
+    if (color.startsWith('#')) {
+      color = color.substring(1);
+      is_dark = parseInt(color, 16) < 8421504;
+    }
+
+
+    var lightStroke = new Style({
+      stroke: new Stroke({
+        color: !is_dark ? [255, 255, 255, 0.6] : this.color,
+        width: 2,
+        lineDash: [4, 8],
+        lineDashOffset: 6
+      })
+    });
+
+    var darkStroke = new Style({
+      stroke: new Stroke({
+        color: is_dark ? [0, 0, 0, 0.6] : this.color,
+        width: 2,
+        lineDash: [4, 8]
+      })
+    });
+
+    this.feature?.setStyle([textStyle, lightStroke, darkStroke]);
 
     this.feature?.getGeometry()?.setCoordinates([this.start, this.end]);
   }
